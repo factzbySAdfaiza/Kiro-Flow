@@ -45,6 +45,9 @@ async function init() {
 
         // 4. Setup Event Listeners
         setupEventListeners();
+
+        // 5. Load Models for Playground
+        await loadModels();
     } catch (err) {
         console.error("Initialization failed:", err);
     }
@@ -198,6 +201,62 @@ async function revokeKey(keyId) {
 
 // --- AI Playground ---
 const chatHistory = [];
+let availableModels = [];
+
+async function loadModels() {
+    const selector = document.getElementById('model-selector');
+    try {
+        const resp = await fetch('/v1/models');
+        const data = await resp.json();
+        availableModels = data.data || [];
+        
+        selector.innerHTML = '';
+        availableModels.forEach(model => {
+            const opt = document.createElement('option');
+            opt.value = model.id;
+            // Show credit multiplier in selector if not 1.0
+            const multiplierText = model.multiplier && model.multiplier !== 1.0 ? ` (${model.multiplier}x)` : '';
+            opt.innerText = (model.display_name || model.id) + multiplierText;
+            
+            // Set Sonnet 4.5 or 3.5 as default if available
+            if (model.id === 'claude-sonnet-4.5' || model.id === 'claude-3-5-sonnet') {
+                opt.selected = true;
+            }
+            selector.appendChild(opt);
+        });
+        
+        // Initial info update
+        updateModelInfo();
+        
+        // Add change listener
+        selector.onchange = updateModelInfo;
+        
+    } catch (err) {
+        console.error("Failed to load models:", err);
+    }
+}
+
+function updateModelInfo() {
+    const selector = document.getElementById('model-selector');
+    const infoPanel = document.getElementById('model-info-panel');
+    const modelId = selector.value;
+    
+    if (!modelId) {
+        infoPanel.style.display = 'none';
+        return;
+    }
+    
+    const model = availableModels.find(m => m.id === modelId);
+    if (model) {
+        document.getElementById('model-display-name').innerText = model.display_name || model.id;
+        document.getElementById('model-description').innerText = model.description || 'No description available.';
+        document.getElementById('model-multiplier').innerText = `${model.multiplier || 1.0}x Credit`;
+        infoPanel.style.display = 'block';
+    } else {
+        infoPanel.style.display = 'none';
+    }
+}
+
 async function sendMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();

@@ -27,7 +27,7 @@ Loads environment variables and provides typed access to them.
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -199,11 +199,70 @@ BASE_RETRY_DELAY: float = 1.0
 # We expose them to our users because they're useful.
 HIDDEN_MODELS: Dict[str, str] = {
     # Claude 3.7 Sonnet - legacy flagship model, still works!
-    # Hidden in Kiro API but functional. Great for users who prefer it.
     "claude-3.7-sonnet": "CLAUDE_3_7_SONNET_20250219_V1_0",
     
-    # Add other hidden/experimental models here as discovered.
-    # Example: "claude-secret-model": "INTERNAL_SECRET_MODEL_ID",
+    # Modern Flagship Models - normalized names that work with Kiro
+    "claude-sonnet-4.5": "claude-sonnet-4.5",
+    "claude-sonnet-4": "claude-sonnet-4",
+    "claude-haiku-4.5": "claude-haiku-4.5",
+    "claude-opus-4.5": "claude-opus-4.5",
+}
+
+# ==================================================================================================
+# Model Metadata (Descriptions & Credit Multipliers)
+# ==================================================================================================
+
+MODEL_METADATA: Dict[str, Dict[str, Any]] = {
+    "auto": {
+        "display_name": "Auto",
+        "description": "Models chosen by task for optimal usage and consistent quality",
+        "multiplier": 1.0
+    },
+    "claude-sonnet-4.5": {
+        "display_name": "Claude Sonnet 4.5",
+        "description": "The latest flagship model from Anthropic, balanced for coding and writing.",
+        "multiplier": 1.3
+    },
+    "claude-sonnet-4": {
+        "display_name": "Claude Sonnet 4",
+        "description": "Hybrid reasoning and coding for regular use.",
+        "multiplier": 1.3
+    },
+    "claude-haiku-4.5": {
+        "display_name": "Claude Haiku 4.5",
+        "description": "The latest lightning-fast Claude Haiku model.",
+        "multiplier": 0.4
+    },
+    "claude-3.7-sonnet": {
+        "display_name": "Claude 3.7 Sonnet",
+        "description": "Legacy flagship model, still powerful for most tasks.",
+        "multiplier": 1.3
+    },
+    "deepseek-v3.2": {
+        "display_name": "DeepSeek v3.2",
+        "description": "Experimental preview of DeepSeek V3.2 for coding and reasoning.",
+        "multiplier": 0.25
+    },
+    "minimax-m2.5": {
+        "display_name": "MiniMax M2.5",
+        "description": "Experimental preview of MiniMax M2.5 for multi-step reasoning.",
+        "multiplier": 0.25
+    },
+    "minimax-m2.1": {
+        "display_name": "MiniMax M2.1",
+        "description": "Experimental preview of MiniMax M2.1 for planning and workflows.",
+        "multiplier": 0.15
+    },
+    "glm-5": {
+        "display_name": "GLM 5",
+        "description": "Experimental preview of GLM-5 high-performance model.",
+        "multiplier": 0.5
+    },
+    "qwen3-coder-next": {
+        "display_name": "Qwen3 Coder Next",
+        "description": "Experimental preview of Qwen3 Coder Next for advanced programming.",
+        "multiplier": 0.05
+    }
 }
 
 # ==================================================================================================
@@ -233,6 +292,20 @@ HIDDEN_MODELS: Dict[str, str] = {
 # Default: {"auto-kiro": "auto"} to avoid Cursor IDE conflict
 MODEL_ALIASES: Dict[str, str] = {
     "auto-kiro": "auto",  # Default alias to avoid Cursor's "auto" model conflict
+    
+    # Compatibility Aliases for models shown in screenshots & README
+    # These map to the best available Claude models in Kiro
+    "deepseek-v3.2": "claude-sonnet-4.5",
+    "minimax-m2.5": "claude-sonnet-4.5",
+    "minimax-m2.1": "claude-haiku-4.5",
+    "glm-5": "claude-sonnet-4.5",
+    "qwen3-coder-next": "claude-sonnet-4.5",
+    
+    # Case-insensitive / Space-friendly Aliases
+    "Deepseek v3.2": "claude-sonnet-4.5",
+    "Claude Sonnet 4.5": "claude-sonnet-4.5",
+    "Claude Sonnet 4": "claude-sonnet-4",
+    "Claude Haiku 4.5": "claude-haiku-4.5",
 }
 
 # Models to hide from /v1/models endpoint.

@@ -37,6 +37,7 @@ from loguru import logger
 from kiro.config import (
     PROXY_API_KEY,
     APP_VERSION,
+    MODEL_METADATA,
 )
 from kiro.models_openai import (
     OpenAIModel,
@@ -159,14 +160,20 @@ async def get_models(request: Request):
     available_model_ids = model_resolver.get_available_models()
     
     # Build OpenAI-compatible model list
-    openai_models = [
-        OpenAIModel(
-            id=model_id,
-            owned_by="anthropic",
-            description="Claude model via Kiro API"
+    openai_models = []
+    for model_id in available_model_ids:
+        # Get metadata if available
+        metadata = MODEL_METADATA.get(model_id, {})
+        
+        openai_models.append(
+            OpenAIModel(
+                id=model_id,
+                owned_by="anthropic",
+                display_name=metadata.get("display_name", model_id),
+                description=metadata.get("description", "Claude model via Kiro API"),
+                multiplier=metadata.get("multiplier", 1.0)
+            )
         )
-        for model_id in available_model_ids
-    ]
     
     return ModelList(data=openai_models)
 

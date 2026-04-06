@@ -44,7 +44,9 @@ class OpenAIModel(BaseModel):
     object: str = "model"
     created: int = Field(default_factory=lambda: int(time.time()))
     owned_by: str = "anthropic"
+    display_name: Optional[str] = None
     description: Optional[str] = None
+    multiplier: Optional[float] = 1.0
 
 
 class ModelList(BaseModel):

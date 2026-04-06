@@ -102,11 +102,16 @@
                 <header class="content-header">
                     <h1>AI Playground</h1>
                     <select id="model-selector" class="select-input glass">
-                        <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                        <option value="claude-3-opus">Claude 3 Opus</option>
-                        <option value="claude-3-haiku">Claude 3 Haiku</option>
+                        <option value="">Loading models...</option>
                     </select>
                 </header>
+                <div id="model-info-panel" class="model-info-panel glass" style="display: none;">
+                    <div class="model-info-header">
+                        <span id="model-display-name" class="model-display-name">Model Name</span>
+                        <span id="model-multiplier" class="model-multiplier badge">1.0x</span>
+                    </div>
+                    <div id="model-description" class="model-description">Model Description</div>
+                </div>
                 <div class="playground-container glass">
                     <div id="chat-history" class="chat-history">
                         <div class="message assistant">
