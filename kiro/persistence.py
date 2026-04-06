@@ -169,26 +169,25 @@ class FirebasePersistence(BasePersistence):
         else:
             try:
                 import firebase_admin
-                app = firebase_admin.get_app()
-                # If initialized with certificate, we can try to reuse it
-                if hasattr(app.credential, 'service_account_info'):
-                    self.db = firestore.AsyncClient.from_service_account_info(app.credential.service_account_info)
-                    logger.info("Firebase Firestore initialized using firebase_admin credentials")
-                else:
-                    # Fallback to default, but handle crash
-                    if os.getenv("VERCEL") == "1":
-                        logger.error("Vercel Detected: Cannot initialize Firestore without explicit credentials.")
-                    try:
-                        self.db = firestore.AsyncClient(project=project_id)
-                    except Exception as e:
-                        logger.error(f"Firestore Default Init Failed (expected on Vercel Hobby): {e}")
-                        self.db = None
-            except Exception as e:
-                logger.warning(f"Could not bridge credentials from firebase_admin: {e}")
                 try:
-                    self.db = firestore.AsyncClient(project=project_id)
-                except Exception:
+                    app = firebase_admin.get_app()
+                    # If initialized with certificate, we can try to reuse it
+                    if hasattr(app.credential, 'service_account_info') and app.credential.service_account_info:
+                        self.db = firestore.AsyncClient.from_service_account_info(app.credential.service_account_info)
+                        logger.info("Firebase Firestore initialized using firebase_admin credentials")
+                    else:
+                        # Limbo mode: initialized with Project ID only
+                        if os.getenv("VERCEL") == "1":
+                            logger.error("Vercel Detected: Firebase Admin is in 'limbo mode'. Set FIREBASE_SERVICE_ACCOUNT to enable database features.")
+                        self.db = None
+                except ValueError:
+                    # Not initialized at all
+                    if os.getenv("VERCEL") == "1":
+                        logger.error("Vercel Detected: Firebase Admin not initialized. Set FIREBASE_SERVICE_ACCOUNT.")
                     self.db = None
+            except Exception as e:
+                logger.warning(f"Firestore initialization check failed: {e}")
+                self.db = None
 
         self.collection = collection
         self.document_id = document_id

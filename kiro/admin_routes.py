@@ -19,8 +19,8 @@ import json
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# This will be injected by main.py
-auth_manager: Optional[KiroAuthManager] = None
+# Flag to track if Firebase Auth is fully functional with credentials
+IS_FIREBASE_AUTH_READY = False
 
 def _clean_json_str(data: str) -> Optional[str]:
     """Handles escaped newlines in env vars."""
@@ -39,6 +39,7 @@ def _clean_json_str(data: str) -> Optional[str]:
 # Initialize firebase-admin only if not already initialized
 try:
     firebase_admin.get_app()
+    IS_FIREBASE_AUTH_READY = True
 except ValueError:
     # 1. Try FIREBASE_SERVICE_ACCOUNT (JSON string)
     cleaned_json = _clean_json_str(FIREBASE_SERVICE_ACCOUNT)
@@ -47,35 +48,49 @@ except ValueError:
             creds_dict = json.loads(cleaned_json)
             cred = credentials.Certificate(creds_dict)
             firebase_admin.initialize_app(cred)
+            IS_FIREBASE_AUTH_READY = True
             logger.info("Firebase Admin initialized from environment JSON string")
         except Exception as e:
             logger.error(f"Failed to initialize Firebase Admin from JSON: {e}")
+    
     # 2. Try FIREBASE_SERVICE_ACCOUNT_FILE (Local path)
-    elif FIREBASE_SERVICE_ACCOUNT_FILE and os.path.exists(FIREBASE_SERVICE_ACCOUNT_FILE):
+    if not IS_FIREBASE_AUTH_READY and FIREBASE_SERVICE_ACCOUNT_FILE and os.path.exists(FIREBASE_SERVICE_ACCOUNT_FILE):
         try:
             cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_FILE)
             firebase_admin.initialize_app(cred)
+            IS_FIREBASE_AUTH_READY = True
             logger.info(f"Firebase Admin initialized from file: {FIREBASE_SERVICE_ACCOUNT_FILE}")
         except Exception as e:
             logger.error(f"Failed to initialize Firebase Admin from file: {e}")
+            
     # 3. Fallback to Project ID (often fails on Hobby Vercel if no ADC)
-    elif FIREBASE_PROJECT_ID:
-        try:
-            firebase_admin.initialize_app(options={'projectId': FIREBASE_PROJECT_ID})
-            logger.info(f"Firebase Admin initialized with project ID: {FIREBASE_PROJECT_ID}")
-        except Exception as e:
-            logger.warning(f"Firebase Admin project ID fallback failed: {e}")
-    else:
-        try:
-            firebase_admin.initialize_app()
-            logger.info("Firebase Admin initialized with default credentials")
-        except Exception as e:
-            logger.warning(f"Firebase Admin default init failed: {e}")
+    if not IS_FIREBASE_AUTH_READY:
+        if FIREBASE_PROJECT_ID:
+            try:
+                firebase_admin.initialize_app(options={'projectId': FIREBASE_PROJECT_ID})
+                logger.warning(f"Firebase Admin in 'Limbo Mode' (Project ID only, no credentials). Auth features will be disabled.")
+            except Exception as e:
+                logger.warning(f"Firebase Admin project ID fallback failed: {e}")
+        else:
+            try:
+                firebase_admin.initialize_app()
+                # If we get here, it might be using ADC (local dev)
+                IS_FIREBASE_AUTH_READY = True
+                logger.info("Firebase Admin initialized with default credentials")
+            except Exception as e:
+                logger.warning(f"Firebase Admin default init failed: {e}")
 
 async def get_current_user(authorization: Optional[str] = Header(None)):
     """
     Verifies the Firebase ID token for any user.
     """
+    if not IS_FIREBASE_AUTH_READY:
+        logger.error("Auth attempted but Firebase credentials are missing in environment.")
+        raise HTTPException(
+            status_code=401, 
+            detail="Kiro-Flow: Database credentials not found. Please set FIREBASE_SERVICE_ACCOUNT in your Vercel Dashboard to enable this feature."
+        )
+
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Unauthorized: Missing token")
     
@@ -189,7 +204,9 @@ async def revoke_user_key(
 @router.get("/config")
 async def get_firebase_config():
     """Provides Firebase client configuration to the frontend (Public)."""
-    return FIREBASE_CLIENT_CONFIG
+    config = FIREBASE_CLIENT_CONFIG.copy()
+    config["firebase_ready"] = IS_FIREBASE_AUTH_READY
+    return config
 
 @router.get("/status")
 async def get_status(

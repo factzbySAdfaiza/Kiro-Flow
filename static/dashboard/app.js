@@ -18,8 +18,15 @@ async function init() {
         
         if (!firebaseConfig || !firebaseConfig.apiKey) {
             console.error("Failed to load Firebase config from server.");
-            alert("Configuration Error: Firebase settings are missing on the server.");
+            showSystemWarning("Configuration Error: Firebase settings are missing on the server.");
             return;
+        }
+
+        // Check if database is ready
+        if (firebaseConfig.firebase_ready === false) {
+            showSystemWarning("Database Disconnected: Kiro-Flow is running in 'Degraded Mode'. Please set FIREBASE_SERVICE_ACCOUNT in your Vercel Dashboard to enable API keys and persistence.");
+            document.getElementById('create-key-btn').disabled = true;
+            document.getElementById('create-key-btn').title = "Database Disconnected - API Key generation is disabled.";
         }
 
         // 2. Initialize Firebase
@@ -298,6 +305,20 @@ async function updateCredentials() {
     } catch (err) {
         alert("Failed to update credentials");
     }
+}
+
+// --- UI Helpers ---
+function showSystemWarning(msg) {
+    const banner = document.createElement('div');
+    banner.className = 'system-warning-banner animate-slide-down';
+    banner.innerHTML = `
+        <div class="warning-content">
+            <span class="warning-icon">⚠️</span>
+            <span class="warning-text">${msg}</span>
+        </div>
+        <button class="btn btn-icon" onclick="this.parentElement.remove()">✕</button>
+    `;
+    document.body.prepend(banner);
 }
 
 // --- Event Listeners ---

@@ -491,6 +491,41 @@ body {
 .message-content p { margin-bottom: 0.5rem; }
 .message-content ul, .message-content ol { margin-left: 1.5rem; margin-bottom: 0.5rem; }
 
+/* System Warning Banner */
+.system-warning-banner {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 1100;
+    position: sticky;
+    top: 0;
+}
+
+.warning-content {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.warning-icon {
+    font-size: 1.125rem;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(0); }
+}
+
+.animate-slide-down {
+    animation: slideDown 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
 /* Responsive adjustments */
 @media (max-width: 1024px) {
     .sidebar { width: 80px; padding: 1rem 0.5rem; }
