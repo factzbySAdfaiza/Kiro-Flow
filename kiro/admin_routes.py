@@ -54,29 +54,39 @@ except ValueError:
             logger.error(f"Failed to initialize Firebase Admin from JSON: {e}")
     
     # 2. Try FIREBASE_SERVICE_ACCOUNT_FILE (Local path)
-    if not IS_FIREBASE_AUTH_READY and FIREBASE_SERVICE_ACCOUNT_FILE and os.path.exists(FIREBASE_SERVICE_ACCOUNT_FILE):
-        try:
-            cred = credentials.Certificate(FIREBASE_SERVICE_ACCOUNT_FILE)
-            firebase_admin.initialize_app(cred)
-            IS_FIREBASE_AUTH_READY = True
-            logger.info(f"Firebase Admin initialized from file: {FIREBASE_SERVICE_ACCOUNT_FILE}")
-        except Exception as e:
-            logger.error(f"Failed to initialize Firebase Admin from file: {e}")
+    if not IS_FIREBASE_AUTH_READY:
+        # Check explicit path from env, or default 'firebase-key.json' in root
+        local_key_file = FIREBASE_SERVICE_ACCOUNT_FILE or "firebase-key.json"
+        if os.path.exists(local_key_file):
+            try:
+                cred = credentials.Certificate(local_key_file)
+                firebase_admin.initialize_app(cred)
+                IS_FIREBASE_AUTH_READY = True
+                logger.info(f"Firebase Admin initialized from local file: {local_key_file}")
+            except Exception as e:
+                logger.error(f"Failed to initialize Firebase Admin from file {local_key_file}: {e}")
             
-    # 3. Fallback to Project ID (often fails on Hobby Vercel if no ADC)
+    # 3. Fallback to Project ID (Safe Limbo Mode)
     if not IS_FIREBASE_AUTH_READY:
         if FIREBASE_PROJECT_ID:
             try:
+                # This allows the app to boot without auth features
                 firebase_admin.initialize_app(options={'projectId': FIREBASE_PROJECT_ID})
-                logger.warning(f"Firebase Admin in 'Limbo Mode' (Project ID only, no credentials). Auth features will be disabled.")
+                logger.warning(f"Firebase Admin in 'Limbo Mode' (Project ID: {FIREBASE_PROJECT_ID}). Admin features will be disabled.")
             except Exception as e:
-                logger.warning(f"Firebase Admin project ID fallback failed: {e}")
+                logger.error(f"Firebase Admin project ID fallback failed: {e}")
         else:
+            # Last resort: try default initialization, but don't mark as READY unless successful
             try:
                 firebase_admin.initialize_app()
-                # If we get here, it might be using ADC (local dev)
-                IS_FIREBASE_AUTH_READY = True
-                logger.info("Firebase Admin initialized with default credentials")
+                # Check if it actually has credentials by attempting to get some dummy property
+                # but for simplicity, we just won't mark it as ready if we reach here without explicit credentials.
+                logger.warning("Firebase Admin initialized with default credentials (ADC). Safety check may fail later.")
+                # We'll set it to READY only if the user explicitly set FIREBASE_PROJECT_ID 
+                # or we are in a cloud environment that supports ADC.
+                if os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+                    IS_FIREBASE_AUTH_READY = True
+                    logger.info("Firebase Admin is READY via Application Default Credentials (ADC)")
             except Exception as e:
                 logger.warning(f"Firebase Admin default init failed: {e}")
 
