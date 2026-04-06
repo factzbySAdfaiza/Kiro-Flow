@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Kiro-Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <!-- Marked for Markdown rendering in Playground -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="dark-theme">
+    <div id="login-overlay" class="overlay">
+        <div class="login-card glass">
+            <h1 class="logo">Kiro-Flow</h1>
+            <p>Sign in to access your dashboard and API keys.</p>
+            <button id="google-login-btn" class="btn btn-primary btn-large">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" height="20" alt="Google">
+                Sign in with Google
+            </button>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden">
+        <aside class="sidebar glass">
+            <div class="sidebar-header">
+                <h2 class="logo-small">Flow</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-tab="profile">
+                    <span class="icon">👤</span> Profile
+                </button>
+                <button class="nav-item" data-tab="keys">
+                    <span class="icon">🔑</span> API Keys
+                </button>
+                <button class="nav-item" data-tab="playground">
+                    <span class="icon">🏗️</span> Playground
+                </button>
+                <div id="admin-nav-group" class="hidden">
+                    <div class="nav-divider"></div>
+                    <button class="nav-item" data-tab="system">
+                        <span class="icon">⚙️</span> System Settings
+                    </button>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <img id="user-avatar" src="" alt="Avatar" class="avatar">
+                    <div class="user-details">
+                        <span id="user-name" class="name">User Name</span>
+                        <span id="user-role" class="role">User</span>
+                    </div>
+                </div>
+                <button id="logout-btn" class="btn btn-icon" title="Logout">🚪</button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <!-- Profile Tab -->
+            <section id="tab-profile" class="tab-content active">
+                <header class="content-header">
+                    <h1>Your Profile</h1>
+                </header>
+                <div class="card-grid">
+                    <div class="card glass animate-fade-in">
+                        <h3>Account Details</h3>
+                        <div class="info-row">
+                            <span class="label">User ID:</span>
+                            <span id="display-uid" class="value code">loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Email:</span>
+                            <span id="display-email" class="value">loading...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Joined:</span>
+                            <span id="display-joined" class="value">loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- API Keys Tab -->
+            <section id="tab-keys" class="tab-content">
+                <header class="content-header">
+                    <h1>API Keys</h1>
+                    <button id="create-key-btn" class="btn btn-primary">+ New API Key</button>
+                </header>
+                <div id="keys-list" class="keys-container">
+                    <!-- Keys will be injected here -->
+                    <div class="loading-spinner"></div>
+                </div>
+            </section>
+
+            <!-- Playground Tab -->
+            <section id="tab-playground" class="tab-content">
+                <header class="content-header">
+                    <h1>AI Playground</h1>
+                    <select id="model-selector" class="select-input glass">
+                        <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                        <option value="claude-3-opus">Claude 3 Opus</option>
+                        <option value="claude-3-haiku">Claude 3 Haiku</option>
+                    </select>
+                </header>
+                <div class="playground-container glass">
+                    <div id="chat-history" class="chat-history">
+                        <div class="message assistant">
+                            <div class="message-content">Hello! I'm Kiro. How can I help you today?</div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <textarea id="chat-input" placeholder="Type a message..." rows="1"></textarea>
+                        <button id="send-btn" class="btn btn-primary">Send</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- System Tab (Admin Only) -->
+            <section id="tab-system" class="tab-content">
+                <header class="content-header">
+                    <h1>System Settings</h1>
+                    <span class="badge admin">Super Admin</span>
+                </header>
+                <div class="card-grid">
+                    <div class="card glass animate-fade-in">
+                        <h3>Kiro Credentials</h3>
+                        <div class="input-group">
+                            <label>Refresh Token</label>
+                            <input type="password" id="admin-token" placeholder="Enter new refresh token..." class="text-input glass">
+                        </div>
+                        <div class="input-group">
+                            <label>Profile ARN (Optional)</label>
+                            <input type="text" id="admin-arn" placeholder="Enter Profile ARN..." class="text-input glass">
+                        </div>
+                        <button id="update-creds-btn" class="btn btn-primary">Update Credentials</button>
+                    </div>
+                    <div class="card glass animate-fade-in">
+                        <h3>System Status</h3>
+                        <div id="system-status-info">
+                            <div class="status-item">
+                                <span class="label">Token Status:</span>
+                                <span id="token-status" class="status-badge">Checking...</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="label">Last Refresh:</span>
+                                <span id="last-refresh" class="value">Never</span>
+                            </div>
+                            <button id="refresh-token-btn" class="btn btn-secondary btn-small">Force Refresh</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="admin-error" class="error-msg hidden"></div>
+                <div id="admin-success" class="success-msg hidden"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal for showing new API Key -->
+    <div id="key-modal" class="overlay hidden">
+        <div class="modal glass animate-pop-in">
+            <h2>API Key Created</h2>
+            <p>Please copy this key now. For security reasons, <strong>you won't be able to see it again</strong>.</p>
+            <div class="key-display-box">
+                <code id="new-key-value">pk-xxxx-xxxx-xxxx</code>
+                <button id="copy-key-btn" class="btn btn-icon">📋</button>
+            </div>
+            <button id="close-modal-btn" class="btn btn-primary">I've saved it</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

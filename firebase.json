@@ -1,0 +1,16 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "us-east1",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Kiro Gateway Admin Dashboard",
+        "supportEmail": "mdfaizansiwan@gmail.com"
+      }
+    }
+  }
+}

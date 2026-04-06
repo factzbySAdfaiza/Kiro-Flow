@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kiro Gateway Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" class="glass-container">
+        <!-- Login View -->
+        <div id="login-view" class="view" style="display: block;">
+            <h1>Kiro Gateway Admin</h1>
+            <p class="subtitle">Secure Google Sign-In required</p>
+            <div id="login-portal">
+                <button id="google-login-btn" class="primary-btn splash-btn">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                    Sign in with Google
+                </button>
+            </div>
+            <p id="login-error" class="error-text" style="display: none;"></p>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="view" style="display: none;">
+            <header>
+                <div class="user-info">
+                    <h1>Dashboard</h1>
+                    <span id="user-email" class="detail">...</span>
+                </div>
+                <div class="header-actions">
+                    <span id="app-version" class="badge">v2.3.1</span>
+                    <button id="logout-btn" class="logout-link">Logout</button>
+                </div>
+            </header>
+            
+            <section class="status-grid">
+                <div class="status-card">
+                    <h3>Auth Status</h3>
+                    <p id="auth-is-authenticated" class="status-indicator">● Checking...</p>
+                    <p id="auth-type" class="detail">Type: ...</p>
+                </div>
+                <div class="status-card">
+                    <h3>Region</h3>
+                    <p id="auth-region" class="value">...</p>
+                </div>
+                <div class="status-card">
+                    <h3>Token Expiry</h3>
+                    <p id="auth-expires-at" class="value">...</p>
+                </div>
+            </section>
+
+            <section class="actions">
+                <h2>Quick Actions</h2>
+                <div class="btn-group">
+                    <button id="refresh-now-btn" class="secondary-btn">Manual Refresh</button>
+                    <button id="show-update-btn" class="secondary-btn">Update Credentials</button>
+                </div>
+            </section>
+
+            <!-- Update Form (Modal/Overlay) -->
+            <div id="update-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <span class="close-btn">&times;</span>
+                    <h2>Update Credentials</h2>
+                    <form id="update-form">
+                        <label for="update-refresh-token">Refresh Token</label>
+                        <textarea id="update-refresh-token" placeholder="Optional"></textarea>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <label for="update-client-id">Client ID</label>
+                                <input type="text" id="update-client-id" placeholder="Optional">
+                            </div>
+                            <div class="form-col">
+                                <label for="update-client-secret">Client Secret</label>
+                                <input type="password" id="update-client-secret" placeholder="Optional">
+                            </div>
+                        </div>
+
+                        <label for="update-region">Region</label>
+                        <input type="text" id="update-region" placeholder="us-east-1 (Optional)">
+                        
+                        <button type="submit" class="primary-btn">Update & Refresh</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div id="toast" class="toast"></div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular) -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>

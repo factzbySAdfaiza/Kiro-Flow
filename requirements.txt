@@ -1,0 +1,15 @@
+# Prod dependencies
+fastapi
+uvicorn[standard]
+httpx
+loguru
+python-dotenv
+tiktoken
+google-cloud-firestore
+python-multipart
+firebase-admin
+
+# Testing dependencies
+pytest
+pytest-asyncio
+hypothesis
