@@ -165,10 +165,24 @@ class FirebasePersistence(BasePersistence):
              except Exception as e:
                 logger.error(f"Failed to init Firestore from file: {e}")
                 self.db = firestore.AsyncClient(project=project_id)
-        # 3. Fallback (may fail on Vercel Hobby if ADC is not set)
+        # 3. Try pulling from initialized firebase_admin
         else:
-            logger.warning("No explicit Firebase credentials found. Falling back to default (might fail in serverless).")
-            self.db = firestore.AsyncClient(project=project_id)
+            try:
+                import firebase_admin
+                app = firebase_admin.get_app()
+                # If initialized with certificate, we can try to reuse it
+                if hasattr(app.credential, 'service_account_info'):
+                    self.db = firestore.AsyncClient.from_service_account_info(app.credential.service_account_info)
+                    logger.info("Firebase Firestore initialized using firebase_admin credentials")
+                else:
+                    # Fallback to default, but log a warning if on Vercel
+                    if os.getenv("VERCEL") == "1":
+                        logger.error("DANGER: Initializing Firestore without explicit credentials on Vercel.")
+                        logger.error("Please add FIREBASE_SERVICE_ACCOUNT to your Environment Variables.")
+                    self.db = firestore.AsyncClient(project=project_id)
+            except Exception as e:
+                logger.warning(f"Could not bridge credentials from firebase_admin: {e}")
+                self.db = firestore.AsyncClient(project=project_id)
 
         self.collection = collection
         self.document_id = document_id
