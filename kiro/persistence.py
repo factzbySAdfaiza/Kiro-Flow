@@ -156,7 +156,7 @@ class FirebasePersistence(BasePersistence):
                 logger.info("Firebase Firestore initialized from environment JSON string")
             except Exception as e:
                 logger.error(f"Failed to init Firestore from JSON info: {e}")
-                self.db = firestore.AsyncClient(project=project_id)
+                self.db = None
         # 2. Try explicit JSON file
         elif FIREBASE_SERVICE_ACCOUNT_FILE and os.path.exists(FIREBASE_SERVICE_ACCOUNT_FILE):
              try:
@@ -164,7 +164,7 @@ class FirebasePersistence(BasePersistence):
                 logger.info(f"Firebase Firestore initialized from file: {FIREBASE_SERVICE_ACCOUNT_FILE}")
              except Exception as e:
                 logger.error(f"Failed to init Firestore from file: {e}")
-                self.db = firestore.AsyncClient(project=project_id)
+                self.db = None
         # 3. Try pulling from initialized firebase_admin
         else:
             try:
@@ -175,19 +175,26 @@ class FirebasePersistence(BasePersistence):
                     self.db = firestore.AsyncClient.from_service_account_info(app.credential.service_account_info)
                     logger.info("Firebase Firestore initialized using firebase_admin credentials")
                 else:
-                    # Fallback to default, but log a warning if on Vercel
+                    # Fallback to default, but handle crash
                     if os.getenv("VERCEL") == "1":
-                        logger.error("DANGER: Initializing Firestore without explicit credentials on Vercel.")
-                        logger.error("Please add FIREBASE_SERVICE_ACCOUNT to your Environment Variables.")
-                    self.db = firestore.AsyncClient(project=project_id)
+                        logger.error("Vercel Detected: Cannot initialize Firestore without explicit credentials.")
+                    try:
+                        self.db = firestore.AsyncClient(project=project_id)
+                    except Exception as e:
+                        logger.error(f"Firestore Default Init Failed (expected on Vercel Hobby): {e}")
+                        self.db = None
             except Exception as e:
                 logger.warning(f"Could not bridge credentials from firebase_admin: {e}")
-                self.db = firestore.AsyncClient(project=project_id)
+                try:
+                    self.db = firestore.AsyncClient(project=project_id)
+                except Exception:
+                    self.db = None
 
         self.collection = collection
         self.document_id = document_id
 
     async def load(self) -> Dict[str, Any]:
+        if not self.db: return {}
         try:
             doc_ref = self.db.collection(self.collection).document(self.document_id)
             doc = await doc_ref.get()
@@ -197,6 +204,7 @@ class FirebasePersistence(BasePersistence):
             return {}
 
     async def save(self, data: Dict[str, Any]) -> bool:
+        if not self.db: return False
         try:
             doc_ref = self.db.collection(self.collection).document(self.document_id)
             await doc_ref.set(data, merge=True)
@@ -206,6 +214,7 @@ class FirebasePersistence(BasePersistence):
             return False
 
     async def get_user_keys(self, uid: str) -> list[Dict[str, Any]]:
+        if not self.db: return []
         try:
             keys_ref = self.db.collection("users").document(uid).collection("keys")
             docs = await keys_ref.get()
@@ -215,6 +224,7 @@ class FirebasePersistence(BasePersistence):
             return []
 
     async def add_user_key(self, uid: str, name: str, value: str, key_id: str) -> bool:
+        if not self.db: return False
         try:
             from datetime import datetime
             key_data = {
@@ -241,6 +251,7 @@ class FirebasePersistence(BasePersistence):
             return False
 
     async def delete_user_key(self, uid: str, key_id: str) -> bool:
+        if not self.db: return False
         try:
             # Get the key first to find its value for lookup deletion
             user_key_ref = self.db.collection("users").document(uid).collection("keys").document(key_id)
@@ -261,6 +272,7 @@ class FirebasePersistence(BasePersistence):
             return False
 
     async def validate_api_key(self, value: str) -> Optional[Dict[str, Any]]:
+        if not self.db: return None
         try:
             lookup_ref = self.db.collection("api_keys_lookup").document(value)
             doc = await lookup_ref.get()
