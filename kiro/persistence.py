@@ -124,6 +124,21 @@ class FilePersistence(BasePersistence):
         return lookup.get(value)
 
 
+def _parse_service_account(data: str) -> Optional[Dict[str, Any]]:
+    """Robustly parse service account JSON string, handling escaping."""
+    if not data: return None
+    try:
+        # 1. Direct parse
+        return json.loads(data)
+    except json.JSONDecodeError:
+        try:
+            # 2. Handle escaped newlines (\n) often found in Vercel/Docker env vars
+            cleaned = data.replace('\\n', '\n')
+            return json.loads(cleaned)
+        except Exception as e:
+            logger.error(f"Failed to parse FIREBASE_SERVICE_ACCOUNT JSON: {e}")
+            return None
+
 class FirebasePersistence(BasePersistence):
     """Firebase Firestore-based persistence provider."""
 
@@ -133,19 +148,26 @@ class FirebasePersistence(BasePersistence):
         
         from kiro.config import FIREBASE_SERVICE_ACCOUNT, FIREBASE_SERVICE_ACCOUNT_FILE
         
-        if FIREBASE_SERVICE_ACCOUNT:
+        # 1. Try explicit JSON string
+        info = _parse_service_account(FIREBASE_SERVICE_ACCOUNT)
+        if info:
             try:
-                import json
-                info = json.loads(FIREBASE_SERVICE_ACCOUNT)
                 self.db = firestore.AsyncClient.from_service_account_info(info)
-            except Exception:
+                logger.info("Firebase Firestore initialized from environment JSON string")
+            except Exception as e:
+                logger.error(f"Failed to init Firestore from JSON info: {e}")
                 self.db = firestore.AsyncClient(project=project_id)
+        # 2. Try explicit JSON file
         elif FIREBASE_SERVICE_ACCOUNT_FILE and os.path.exists(FIREBASE_SERVICE_ACCOUNT_FILE):
              try:
                 self.db = firestore.AsyncClient.from_service_account_json(FIREBASE_SERVICE_ACCOUNT_FILE)
-             except Exception:
+                logger.info(f"Firebase Firestore initialized from file: {FIREBASE_SERVICE_ACCOUNT_FILE}")
+             except Exception as e:
+                logger.error(f"Failed to init Firestore from file: {e}")
                 self.db = firestore.AsyncClient(project=project_id)
+        # 3. Fallback (may fail on Vercel Hobby if ADC is not set)
         else:
+            logger.warning("No explicit Firebase credentials found. Falling back to default (might fail in serverless).")
             self.db = firestore.AsyncClient(project=project_id)
 
         self.collection = collection

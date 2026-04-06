@@ -22,19 +22,34 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # This will be injected by main.py
 auth_manager: Optional[KiroAuthManager] = None
 
+def _clean_json_str(data: str) -> Optional[str]:
+    """Handles escaped newlines in env vars."""
+    if not data: return None
+    try:
+        json.loads(data)
+        return data
+    except json.JSONDecodeError:
+        try:
+            cleaned = data.replace('\\n', '\n')
+            json.loads(cleaned)
+            return cleaned
+        except Exception:
+            return None
+
 # Initialize firebase-admin only if not already initialized
 try:
     firebase_admin.get_app()
 except ValueError:
     # 1. Try FIREBASE_SERVICE_ACCOUNT (JSON string)
-    if FIREBASE_SERVICE_ACCOUNT:
+    cleaned_json = _clean_json_str(FIREBASE_SERVICE_ACCOUNT)
+    if cleaned_json:
         try:
-            creds_dict = json.loads(FIREBASE_SERVICE_ACCOUNT)
+            creds_dict = json.loads(cleaned_json)
             cred = credentials.Certificate(creds_dict)
             firebase_admin.initialize_app(cred)
             logger.info("Firebase Admin initialized from environment JSON string")
         except Exception as e:
-            logger.error(f"Failed to initialize Firebase Admin from JSON string: {e}")
+            logger.error(f"Failed to initialize Firebase Admin from JSON: {e}")
     # 2. Try FIREBASE_SERVICE_ACCOUNT_FILE (Local path)
     elif FIREBASE_SERVICE_ACCOUNT_FILE and os.path.exists(FIREBASE_SERVICE_ACCOUNT_FILE):
         try:
@@ -42,18 +57,20 @@ except ValueError:
             firebase_admin.initialize_app(cred)
             logger.info(f"Firebase Admin initialized from file: {FIREBASE_SERVICE_ACCOUNT_FILE}")
         except Exception as e:
-            logger.error(f"Failed to initialize Firebase Admin from file {FIREBASE_SERVICE_ACCOUNT_FILE}: {e}")
-    # 3. Fallback to Project ID or Application Default Credentials
+            logger.error(f"Failed to initialize Firebase Admin from file: {e}")
+    # 3. Fallback to Project ID (often fails on Hobby Vercel if no ADC)
+    elif FIREBASE_PROJECT_ID:
+        try:
+            firebase_admin.initialize_app(options={'projectId': FIREBASE_PROJECT_ID})
+            logger.info(f"Firebase Admin initialized with project ID: {FIREBASE_PROJECT_ID}")
+        except Exception as e:
+            logger.warning(f"Firebase Admin project ID fallback failed: {e}")
     else:
         try:
-            if FIREBASE_PROJECT_ID:
-                firebase_admin.initialize_app(options={'projectId': FIREBASE_PROJECT_ID})
-                logger.info(f"Firebase Admin initialized with project ID: {FIREBASE_PROJECT_ID}")
-            else:
-                firebase_admin.initialize_app()
-                logger.info("Firebase Admin initialized with default credentials")
+            firebase_admin.initialize_app()
+            logger.info("Firebase Admin initialized with default credentials")
         except Exception as e:
-            logger.warning(f"Firebase Admin not initialized properly: {e}")
+            logger.warning(f"Firebase Admin default init failed: {e}")
 
 async def get_current_user(authorization: Optional[str] = Header(None)):
     """
